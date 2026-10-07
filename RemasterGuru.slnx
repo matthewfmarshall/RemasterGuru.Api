@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/RemasterGuru.Api/RemasterGuru.Api.csproj" />
+    <Project Path="src/RemasterGuru.Domain/RemasterGuru.Domain.csproj" />
+    <Project Path="src/RemasterGuru.Infrastructure/RemasterGuru.Infrastructure.csproj" />
+    <Project Path="src/RemasterGuru.Worker/RemasterGuru.Worker.csproj" />
+  </Folder>
+</Solution>
