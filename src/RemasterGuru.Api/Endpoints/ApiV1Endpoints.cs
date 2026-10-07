@@ -209,6 +209,7 @@ public static class ApiV1Endpoints
             ICurrentUser user,
             IAlbumRepository albums,
             IAssetRepository assets,
+            IConfiguration config,
             CancellationToken ct) =>
         {
             var album = await albums.GetForUserAsync(albumId, user.UserId, ct);
@@ -217,8 +218,9 @@ public static class ApiV1Endpoints
                 return Results.Problem("Album not found.", statusCode: StatusCodes.Status404NotFound);
             }
 
+            var apiBase = config["Api:PublicBaseUrl"] ?? "http://localhost:5055";
             var list = await assets.ListForAlbumAsync(albumId, user.UserId, ct);
-            return Results.Json(list.Select(ContractMaps.ToAssetDto));
+            return Results.Json(list.Select(a => ContractMaps.ToAssetDto(a, apiBase)));
         });
 
         api.MapPost("/albums/{albumId:guid}/assets", async (
@@ -228,6 +230,8 @@ public static class ApiV1Endpoints
             IAlbumRepository albums,
             IAssetRepository assets,
             IUploadSessionRepository sessions,
+            IBlobStorage blobs,
+            IConfiguration config,
             CancellationToken ct) =>
         {
             var album = await albums.GetForUserAsync(albumId, user.UserId, ct);
@@ -240,6 +244,18 @@ public static class ApiV1Endpoints
             if (session is null || session.AlbumId != albumId)
             {
                 return Results.Problem("Upload session not found.", statusCode: StatusCodes.Status404NotFound);
+            }
+
+            if (session.IsCompleted)
+            {
+                return Results.Problem("Upload session already completed.", statusCode: StatusCodes.Status409Conflict);
+            }
+
+            if (!blobs.Exists(session.StorageKey))
+            {
+                return Results.Problem(
+                    "Upload bytes not found. Complete the PUT to the upload URL before registering.",
+                    statusCode: StatusCodes.Status400BadRequest);
             }
 
             var asset = await assets.GetWithVersionsForUserAsync(session.AssetId, user.UserId, ct);
@@ -257,13 +273,15 @@ public static class ApiV1Endpoints
             await sessions.SaveChangesAsync(ct);
             await assets.SaveChangesAsync(ct);
 
-            return Results.Json(ContractMaps.ToAssetDto(asset));
+            var apiBase = config["Api:PublicBaseUrl"] ?? "http://localhost:5055";
+            return Results.Json(ContractMaps.ToAssetDto(asset, apiBase));
         });
 
-        api.MapGet("/assets/{assetId:guid}", async (
+        api.MapGet("/assets/{assetId:guid}/original", async (
             Guid assetId,
             ICurrentUser user,
             IAssetRepository assets,
+            IBlobStorage blobs,
             CancellationToken ct) =>
         {
             var asset = await assets.GetWithVersionsForUserAsync(assetId, user.UserId, ct);
@@ -272,7 +290,32 @@ public static class ApiV1Endpoints
                 return Results.Problem("Asset not found.", statusCode: StatusCodes.Status404NotFound);
             }
 
-            return Results.Json(ContractMaps.ToAssetDto(asset));
+            var original = asset.Versions.FirstOrDefault(v => v.Kind == AssetVersionKind.Original)
+                ?? asset.Versions.OrderBy(v => v.CreatedAt).FirstOrDefault();
+            if (original is null || !blobs.Exists(original.StorageKey))
+            {
+                return Results.Problem("Original file not found.", statusCode: StatusCodes.Status404NotFound);
+            }
+
+            var stream = blobs.OpenRead(original.StorageKey);
+            return Results.Stream(stream, original.ContentType);
+        });
+
+        api.MapGet("/assets/{assetId:guid}", async (
+            Guid assetId,
+            ICurrentUser user,
+            IAssetRepository assets,
+            IConfiguration config,
+            CancellationToken ct) =>
+        {
+            var asset = await assets.GetWithVersionsForUserAsync(assetId, user.UserId, ct);
+            if (asset is null)
+            {
+                return Results.Problem("Asset not found.", statusCode: StatusCodes.Status404NotFound);
+            }
+
+            var apiBase = config["Api:PublicBaseUrl"] ?? "http://localhost:5055";
+            return Results.Json(ContractMaps.ToAssetDto(asset, apiBase));
         });
 
         api.MapDelete("/assets/{assetId:guid}", async (

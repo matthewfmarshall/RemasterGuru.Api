@@ -20,6 +20,7 @@ public sealed class AssetRepository(RemasterGuruDbContext db) : IAssetRepository
         await db.Assets
             .Include(a => a.Versions)
             .Where(a => a.AlbumId == albumId && a.UserId == userId && a.DeletedAt == null)
+            .Where(a => db.UploadSessions.Any(s => s.AssetId == a.Id && s.IsCompleted))
             .OrderBy(a => a.CreatedAt)
             .ToListAsync(cancellationToken);
 

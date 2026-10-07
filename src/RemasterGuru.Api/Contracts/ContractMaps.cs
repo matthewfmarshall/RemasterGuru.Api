@@ -100,16 +100,23 @@ public static class ContractMaps
         updatedAt = album.UpdatedAt
     };
 
-    public static object ToAssetDto(Asset asset)
+    public static object ToAssetDto(Asset asset, string? apiPublicBaseUrl = null)
     {
         var original = asset.Versions.FirstOrDefault(v => v.Kind == AssetVersionKind.Original)
             ?? asset.Versions.OrderBy(v => v.CreatedAt).FirstOrDefault();
+
+        string? thumbnailUrl = null;
+        if (apiPublicBaseUrl is not null)
+        {
+            thumbnailUrl = $"{apiPublicBaseUrl.TrimEnd('/')}/api/v1/assets/{asset.Id}/original";
+        }
 
         return new
         {
             id = asset.Id,
             albumId = asset.AlbumId,
             caption = asset.Caption,
+            thumbnailUrl,
             original = original is null
                 ? null
                 : new

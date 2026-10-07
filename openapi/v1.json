@@ -223,6 +223,29 @@
         }
       }
     },
+    "/api/v1/assets/{assetId}/original": {
+      "get": {
+        "tags": [
+          "RemasterGuru.Api"
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Original image bytes"
+          }
+        }
+      }
+    },
     "/api/v1/assets/{assetId}": {
       "get": {
         "tags": [
