@@ -241,7 +241,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Original image bytes"
+            "description": "OK"
           }
         }
       }
@@ -491,6 +491,29 @@
       "get": {
         "tags": [
           "RemasterGuru.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{assetId}/restored": {
+      "get": {
+        "tags": [
+          "RemasterGuru.Api"
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
         ],
         "responses": {
           "200": {

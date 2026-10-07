@@ -126,7 +126,7 @@ Upload bytes with `PUT` (no `X-User-Id` required). Then register the asset:
 | Area | Endpoints |
 |------|-----------|
 | Albums | `GET/POST /api/v1/albums`, `GET/PATCH/DELETE /api/v1/albums/{id}` |
-| Assets | `POST /api/v1/assets/upload-sessions`, `GET/POST /api/v1/albums/{id}/assets`, `GET/DELETE /api/v1/assets/{id}` |
+| Assets | `POST /api/v1/assets/upload-sessions`, `GET/POST /api/v1/albums/{id}/assets`, `GET/DELETE /api/v1/assets/{id}`, `GET /api/v1/assets/{id}/original`, `GET /api/v1/assets/{id}/restored` |
 | Remaster | `POST /api/v1/assets/{id}/remaster-jobs`, `GET /api/v1/remaster-jobs/{id}`, `GET /api/v1/assets/{id}/remaster-jobs` |
 | Credits | `GET /api/v1/credits/balance`, `GET /api/v1/credits/ledger`, `POST /api/v1/credits/grants` (Development only) |
 | Orders | `POST /api/v1/albums/{id}/orders`, `GET /api/v1/orders`, `GET /api/v1/orders/{id}` |
@@ -172,7 +172,23 @@ curl -sS -X POST "http://localhost:5055/api/v1/assets/$ASSET_ID/remaster-jobs" \
 | `ConnectionStrings__Default` | SQL Server on `localhost,1433` (see above) |
 | `Api__PublicBaseUrl` | `http://localhost:5055` |
 | `Storage__BlobRoot` | `data/blobs` |
-| `XAI_API_KEY` | Reserved for future xAI integration in the worker |
+| `XAI_API_KEY` | xAI API key for real remasters in the Worker (see below) |
+
+### xAI remaster (Worker)
+
+The Worker calls xAI **JSON** image edits (`POST https://api.x.ai/v1/images/edits`, model `grok-imagine-image-2.0`). Without a key it logs a one-time warning and copies the original bytes as a stub restored version so the UI flow still works.
+
+Set the key via environment variable or .NET user secrets on the **Worker** project:
+
+```bash
+export XAI_API_KEY="xai-…"
+
+# or
+dotnet user-secrets set XAI_API_KEY "xai-…" \
+  --project src/RemasterGuru.Worker
+```
+
+Restart the Worker after changing the key.
 
 ## VS Code
 

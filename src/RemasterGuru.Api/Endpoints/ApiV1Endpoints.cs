@@ -301,6 +301,39 @@ public static class ApiV1Endpoints
             return Results.Stream(stream, original.ContentType);
         });
 
+        api.MapGet("/assets/{assetId:guid}/restored", async (
+            Guid assetId,
+            ICurrentUser user,
+            IAssetRepository assets,
+            IBlobStorage blobs,
+            CancellationToken ct) =>
+        {
+            var asset = await assets.GetWithVersionsForUserAsync(assetId, user.UserId, ct);
+            if (asset is null)
+            {
+                return Results.Problem("Asset not found.", statusCode: StatusCodes.Status404NotFound);
+            }
+
+            var restored = asset.Versions
+                .Where(v => v.Kind == AssetVersionKind.Restored)
+                .OrderByDescending(v => v.CreatedAt)
+                .FirstOrDefault();
+
+            if (restored is null && asset.ActiveVersionId is not null)
+            {
+                restored = asset.Versions.FirstOrDefault(v =>
+                    v.Id == asset.ActiveVersionId && v.Kind == AssetVersionKind.Restored);
+            }
+
+            if (restored is null || !blobs.Exists(restored.StorageKey))
+            {
+                return Results.Problem("Restored file not found.", statusCode: StatusCodes.Status404NotFound);
+            }
+
+            var stream = blobs.OpenRead(restored.StorageKey);
+            return Results.Stream(stream, restored.ContentType);
+        });
+
         api.MapGet("/assets/{assetId:guid}", async (
             Guid assetId,
             ICurrentUser user,
