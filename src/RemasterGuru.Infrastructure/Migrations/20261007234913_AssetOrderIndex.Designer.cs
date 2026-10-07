@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RemasterGuru.Infrastructure.Data;
 
@@ -11,9 +12,11 @@ using RemasterGuru.Infrastructure.Data;
 namespace RemasterGuru.Infrastructure.Migrations
 {
     [DbContext(typeof(RemasterGuruDbContext))]
-    partial class RemasterGuruDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261007234913_AssetOrderIndex")]
+    partial class AssetOrderIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

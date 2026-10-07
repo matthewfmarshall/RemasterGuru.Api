@@ -115,6 +115,7 @@ public static class ContractMaps
         {
             id = asset.Id,
             albumId = asset.AlbumId,
+            orderIndex = asset.OrderIndex,
             caption = asset.Caption,
             thumbnailUrl,
             original = original is null

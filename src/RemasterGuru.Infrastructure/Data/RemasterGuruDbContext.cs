@@ -36,6 +36,7 @@ public class RemasterGuruDbContext(DbContextOptions<RemasterGuruDbContext> optio
         {
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.AlbumId);
+            e.HasIndex(x => new { x.AlbumId, x.OrderIndex });
             e.HasOne(x => x.Album).WithMany(a => a.Assets).HasForeignKey(x => x.AlbumId);
         });
 

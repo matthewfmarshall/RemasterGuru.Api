@@ -1,8 +1,10 @@
 using System.Text.Json;
+using RemasterGuru.Api.Albums;
 using RemasterGuru.Api.Auth;
 using RemasterGuru.Api.Contracts;
 using RemasterGuru.Domain.Entities;
 using RemasterGuru.Domain.Enums;
+using RemasterGuru.Infrastructure.Imaging;
 using RemasterGuru.Infrastructure.Repositories;
 using RemasterGuru.Infrastructure.Storage;
 
@@ -131,6 +133,139 @@ public static class ApiV1Endpoints
             await albums.SaveChangesAsync(ct);
             return Results.NoContent();
         });
+
+        api.MapGet("/albums/{albumId:guid}/layout", async (
+            Guid albumId,
+            ICurrentUser user,
+            IAlbumRepository albums,
+            IAssetRepository assets,
+            IConfiguration config,
+            CancellationToken ct) =>
+        {
+            var album = await albums.GetForUserAsync(albumId, user.UserId, ct);
+            if (album is null)
+            {
+                return Results.Problem("Album not found.", statusCode: StatusCodes.Status404NotFound);
+            }
+
+            var apiBase = config["Api:PublicBaseUrl"] ?? "http://localhost:5055";
+            return Results.Json(await BuildAlbumLayoutPayloadAsync(album, assets, apiBase, user.UserId, ct));
+        });
+
+        api.MapPatch("/albums/{albumId:guid}/layout", async (
+            Guid albumId,
+            PatchAlbumLayoutRequest body,
+            ICurrentUser user,
+            IAlbumRepository albums,
+            IAssetRepository assets,
+            IConfiguration config,
+            CancellationToken ct) =>
+        {
+            var album = await albums.GetForUserAsync(albumId, user.UserId, ct);
+            if (album is null)
+            {
+                return Results.Problem("Album not found.", statusCode: StatusCodes.Status404NotFound);
+            }
+
+            if (body.OrderedAssetIds is null || body.OrderedAssetIds.Count == 0)
+            {
+                return Results.Problem("orderedAssetIds is required.", statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            var assetList = await assets.ListForAlbumAsync(albumId, user.UserId, ct);
+            if (body.OrderedAssetIds.Count != assetList.Count)
+            {
+                return Results.Problem(
+                    "orderedAssetIds must include every photo in the album exactly once.",
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            var albumAssetIds = assetList.Select(a => a.Id).ToHashSet();
+            if (body.OrderedAssetIds.Any(id => !albumAssetIds.Contains(id)))
+            {
+                return Results.Problem(
+                    "orderedAssetIds contains unknown asset ids for this album.",
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            if (body.OrderedAssetIds.Distinct().Count() != body.OrderedAssetIds.Count)
+            {
+                return Results.Problem(
+                    "orderedAssetIds must not contain duplicates.",
+                    statusCode: StatusCodes.Status400BadRequest);
+            }
+
+            for (var i = 0; i < body.OrderedAssetIds.Count; i++)
+            {
+                var asset = assetList.First(a => a.Id == body.OrderedAssetIds[i]);
+                asset.OrderIndex = i;
+            }
+
+            album.UpdatedAt = DateTimeOffset.UtcNow;
+            await albums.SaveChangesAsync(ct);
+            await assets.SaveChangesAsync(ct);
+
+            var apiBase = config["Api:PublicBaseUrl"] ?? "http://localhost:5055";
+            return Results.Json(await BuildAlbumLayoutPayloadAsync(album, assets, apiBase, user.UserId, ct));
+        });
+
+        api.MapGet("/albums/{albumId:guid}/print-readiness", async (
+            Guid albumId,
+            ICurrentUser user,
+            IAlbumRepository albums,
+            IAssetRepository assets,
+            IUploadSessionRepository sessions,
+            IBlobStorage blobs,
+            CancellationToken ct) =>
+        {
+            var album = await albums.GetForUserAsync(albumId, user.UserId, ct);
+            if (album is null)
+            {
+                return Results.Problem("Album not found.", statusCode: StatusCodes.Status404NotFound);
+            }
+
+            var assetList = await assets.ListForAlbumAsync(albumId, user.UserId, ct);
+            var byteSizes = await sessions.GetCompletedByteSizesForAssetsAsync(assetList.Select(a => a.Id), ct);
+            var readiness = PrintReadinessEvaluator.Evaluate(assetList, byteSizes, blobs);
+
+            return Results.Json(new
+            {
+                templateId = album.TemplateId,
+                pageCount = AlbumTemplateCatalog.GetPageCount(album.TemplateId),
+                slotsFilled = assetList.Count,
+                minLongEdgePx = AlbumTemplateCatalog.FullPageMinLongEdgePx,
+                softPhotoCount = readiness.SoftPhotoCount,
+                warningCount = readiness.WarningCount,
+                warnings = readiness.Warnings.Select(w => new
+                {
+                    assetId = w.AssetId,
+                    severity = w.Severity,
+                    code = w.Code,
+                    message = w.Message
+                })
+            });
+        });
+    }
+
+    private static async Task<object> BuildAlbumLayoutPayloadAsync(
+        Album album,
+        IAssetRepository assets,
+        string apiBase,
+        Guid userId,
+        CancellationToken ct)
+    {
+        var assetList = await assets.ListForAlbumAsync(album.Id, userId, ct);
+        var pageCount = AlbumTemplateCatalog.GetPageCount(album.TemplateId);
+
+        return new
+        {
+            albumId = album.Id,
+            templateId = album.TemplateId,
+            pageCount,
+            slotsFilled = assetList.Count,
+            orderedAssetIds = assetList.Select(a => a.Id).ToList(),
+            assets = assetList.Select(a => ContractMaps.ToAssetDto(a, apiBase))
+        };
     }
 
     private static void MapAssets(RouteGroupBuilder api)
@@ -154,12 +289,14 @@ public static class ApiV1Endpoints
             var sessionId = Guid.NewGuid();
             var storageKey = $"blobs/{assetId}/original";
             var now = DateTimeOffset.UtcNow;
+            var orderIndex = await assets.CountForAlbumAsync(body.AlbumId, user.UserId, ct);
 
             var asset = new Asset
             {
                 Id = assetId,
                 AlbumId = body.AlbumId,
                 UserId = user.UserId,
+                OrderIndex = orderIndex,
                 CreatedAt = now
             };
 
@@ -269,10 +406,47 @@ public static class ApiV1Endpoints
                 asset.Caption = body.Caption;
             }
 
+            var original = asset.Versions.FirstOrDefault(v => v.Kind == AssetVersionKind.Original)
+                ?? asset.Versions.OrderBy(v => v.CreatedAt).FirstOrDefault();
+            if (original is not null && blobs.Exists(original.StorageKey)
+                && (original.Width == 0 || original.Height == 0))
+            {
+                await using var dimensionStream = blobs.OpenRead(original.StorageKey);
+                if (ImageDimensionProbe.TryGetDimensions(dimensionStream, out var width, out var height))
+                {
+                    original.Width = width;
+                    original.Height = height;
+                }
+            }
+
             session.IsCompleted = true;
             await sessions.SaveChangesAsync(ct);
             await assets.SaveChangesAsync(ct);
 
+            var apiBase = config["Api:PublicBaseUrl"] ?? "http://localhost:5055";
+            return Results.Json(ContractMaps.ToAssetDto(asset, apiBase));
+        });
+
+        api.MapPatch("/assets/{assetId:guid}", async (
+            Guid assetId,
+            PatchAssetRequest body,
+            ICurrentUser user,
+            IAssetRepository assets,
+            IConfiguration config,
+            CancellationToken ct) =>
+        {
+            var asset = await assets.GetWithVersionsForUserAsync(assetId, user.UserId, ct);
+            if (asset is null)
+            {
+                return Results.Problem("Asset not found.", statusCode: StatusCodes.Status404NotFound);
+            }
+
+            if (body.Caption is not null)
+            {
+                asset.Caption = string.IsNullOrWhiteSpace(body.Caption) ? null : body.Caption.Trim();
+            }
+
+            await assets.SaveChangesAsync(ct);
             var apiBase = config["Api:PublicBaseUrl"] ?? "http://localhost:5055";
             return Results.Json(ContractMaps.ToAssetDto(asset, apiBase));
         });
@@ -630,6 +804,8 @@ public static class ApiV1Endpoints
 
     public sealed record CreateAlbumRequest(string Title, string? TemplateId);
     public sealed record PatchAlbumRequest(string? Title, string? TemplateId, string? Status);
+    public sealed record PatchAlbumLayoutRequest(IReadOnlyList<Guid>? OrderedAssetIds);
+    public sealed record PatchAssetRequest(string? Caption);
     public sealed record CreateUploadSessionRequest(Guid AlbumId, string? FileName, string? ContentType, long ByteSize);
     public sealed record RegisterAssetRequest(Guid SessionId, string? Caption);
     public sealed record CreateRemasterJobRequest(string? Preset, string? TargetResolution, string? PromptOverride);

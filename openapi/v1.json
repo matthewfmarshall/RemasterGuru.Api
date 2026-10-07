@@ -147,6 +147,83 @@
         }
       }
     },
+    "/api/v1/albums/{albumId}/layout": {
+      "get": {
+        "tags": [
+          "RemasterGuru.Api"
+        ],
+        "parameters": [
+          {
+            "name": "albumId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "RemasterGuru.Api"
+        ],
+        "parameters": [
+          {
+            "name": "albumId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchAlbumLayoutRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/albums/{albumId}/print-readiness": {
+      "get": {
+        "tags": [
+          "RemasterGuru.Api"
+        ],
+        "parameters": [
+          {
+            "name": "albumId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/assets/upload-sessions": {
       "post": {
         "tags": [
@@ -223,6 +300,81 @@
         }
       }
     },
+    "/api/v1/assets/{assetId}": {
+      "patch": {
+        "tags": [
+          "RemasterGuru.Api"
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchAssetRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "RemasterGuru.Api"
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "RemasterGuru.Api"
+        ],
+        "parameters": [
+          {
+            "name": "assetId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/assets/{assetId}/original": {
       "get": {
         "tags": [
@@ -246,29 +398,8 @@
         }
       }
     },
-    "/api/v1/assets/{assetId}": {
+    "/api/v1/assets/{assetId}/restored": {
       "get": {
-        "tags": [
-          "RemasterGuru.Api"
-        ],
-        "parameters": [
-          {
-            "name": "assetId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      },
-      "delete": {
         "tags": [
           "RemasterGuru.Api"
         ],
@@ -498,29 +629,6 @@
           }
         }
       }
-    },
-    "/api/v1/assets/{assetId}/restored": {
-      "get": {
-        "tags": [
-          "RemasterGuru.Api"
-        ],
-        "parameters": [
-          {
-            "name": "assetId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
     }
   },
   "components": {
@@ -606,6 +714,20 @@
         },
         "additionalProperties": false
       },
+      "PatchAlbumLayoutRequest": {
+        "type": "object",
+        "properties": {
+          "orderedAssetIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "PatchAlbumRequest": {
         "type": "object",
         "properties": {
@@ -618,6 +740,16 @@
             "nullable": true
           },
           "status": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "PatchAssetRequest": {
+        "type": "object",
+        "properties": {
+          "caption": {
             "type": "string",
             "nullable": true
           }
