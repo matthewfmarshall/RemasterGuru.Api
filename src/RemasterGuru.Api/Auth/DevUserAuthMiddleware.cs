@@ -8,6 +8,12 @@ public sealed class DevUserAuthMiddleware(RequestDelegate next)
 
     public async Task InvokeAsync(HttpContext context, IUserRepository users)
     {
+        if (HttpMethods.IsOptions(context.Request.Method))
+        {
+            await next(context);
+            return;
+        }
+
         if (IsAnonymousPath(context.Request))
         {
             await next(context);

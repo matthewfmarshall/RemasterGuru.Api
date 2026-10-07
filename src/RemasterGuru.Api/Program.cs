@@ -10,13 +10,19 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUserAccessor>();
 builder.Services.AddRemasterGuruInfrastructure(builder.Configuration);
-builder.Services.AddCors(options =>
+if (builder.Environment.IsDevelopment())
 {
-    options.AddDefaultPolicy(policy =>
-        policy.WithOrigins("http://localhost:3000")
-            .AllowAnyHeader()
-            .AllowAnyMethod());
-});
+    builder.Services.AddCors(options =>
+    {
+        options.AddDefaultPolicy(policy =>
+            policy
+                .WithOrigins(
+                    "http://localhost:3000",
+                    "http://127.0.0.1:3000")
+                .AllowAnyHeader()
+                .AllowAnyMethod());
+    });
+}
 
 var app = builder.Build();
 
@@ -29,7 +35,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors();
+if (app.Environment.IsDevelopment())
+{
+    app.UseCors();
+}
+
 app.UseMiddleware<DevUserAuthMiddleware>();
 
 app.MapGet("/health", () => Results.Json(new { status = "ok" }));

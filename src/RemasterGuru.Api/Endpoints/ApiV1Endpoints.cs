@@ -192,7 +192,7 @@ public static class ApiV1Endpoints
             };
             await sessions.AddAsync(session, ct);
 
-            var baseUrl = config["Api:PublicBaseUrl"] ?? "http://localhost:5000";
+            var baseUrl = config["Api:PublicBaseUrl"] ?? "http://localhost:5055";
             var uploadUrl = $"{baseUrl.TrimEnd('/')}/api/v1/internal/upload/{sessionId}";
 
             return Results.Json(new

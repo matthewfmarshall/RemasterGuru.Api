@@ -54,19 +54,21 @@ Install the EF CLI once if needed: `dotnet tool install --global dotnet-ef`
 
 ## Run locally
 
+**Local HTTP URL:** `http://localhost:5055` (`launchSettings.json` profile `http`). On macOS, port **5000** is often used by AirPlay Receiver; if the Web app shows “Failed to fetch”, ensure `NEXT_PUBLIC_API_URL` in the Web repo matches this port (not `5000`).
+
 From this repository root:
 
 ```bash
-# API (http://localhost:5000)
+# API (http://localhost:5055)
 dotnet run --project src/RemasterGuru.Api
 
 # Worker (processes remaster jobs; same SQL Server database)
 dotnet run --project src/RemasterGuru.Worker
 ```
 
-- Health: `GET http://localhost:5000/health`
-- Swagger UI (Development): `http://localhost:5000/swagger`
-- OpenAPI 3 (Swashbuckle): `http://localhost:5000/swagger/v1/swagger.json`
+- Health: `GET http://localhost:5055/health`
+- Swagger UI (Development): `http://localhost:5055/swagger`
+- OpenAPI 3 (Swashbuckle): `http://localhost:5055/swagger/v1/swagger.json`
 - Committed contract: `openapi/v1.json` (regenerate when endpoints change)
 
 ### Export OpenAPI
@@ -74,7 +76,7 @@ dotnet run --project src/RemasterGuru.Worker
 With the API running:
 
 ```bash
-curl -fsS http://localhost:5000/swagger/v1/swagger.json -o openapi/v1.json
+curl -fsS http://localhost:5055/swagger/v1/swagger.json -o openapi/v1.json
 ```
 
 Or use the helper script (curl first, then `swagger tofile` fallback):
@@ -113,7 +115,7 @@ The API auto-creates a `User` row on first request. Replace with JWT/cookies bef
 
 `POST /api/v1/assets/upload-sessions` returns an `uploadUrl` like:
 
-`http://localhost:5000/api/v1/internal/upload/{sessionId}`
+`http://localhost:5055/api/v1/internal/upload/{sessionId}`
 
 Upload bytes with `PUT` (no `X-User-Id` required). Then register the asset:
 
@@ -137,7 +139,7 @@ Full contract shapes: Project Context doc `docs/api-v1.md`.
 export USER_ID="00000000-0000-4000-8000-000000000001"
 
 # Album
-ALBUM=$(curl -sS -X POST http://localhost:5000/api/v1/albums \
+ALBUM=$(curl -sS -X POST http://localhost:5055/api/v1/albums \
   -H "Content-Type: application/json" \
   -H "X-User-Id: $USER_ID" \
   -d '{"title":"Mom & Dad","templateId":"hardcover-24"}')
@@ -145,19 +147,19 @@ echo "$ALBUM"
 ALBUM_ID=$(echo "$ALBUM" | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
 
 # Upload session + register (optional PUT upload to uploadUrl)
-SESSION=$(curl -sS -X POST http://localhost:5000/api/v1/assets/upload-sessions \
+SESSION=$(curl -sS -X POST http://localhost:5055/api/v1/assets/upload-sessions \
   -H "Content-Type: application/json" \
   -H "X-User-Id: $USER_ID" \
   -d "{\"albumId\":\"$ALBUM_ID\",\"fileName\":\"scan.jpg\",\"contentType\":\"image/jpeg\",\"byteSize\":1234}")
 ASSET_ID=$(echo "$SESSION" | python3 -c "import sys,json; print(json.load(sys.stdin)['assetId'])")
 SESSION_ID=$(echo "$SESSION" | python3 -c "import sys,json; print(json.load(sys.stdin)['sessionId'])")
-curl -sS -X POST "http://localhost:5000/api/v1/albums/$ALBUM_ID/assets" \
+curl -sS -X POST "http://localhost:5055/api/v1/albums/$ALBUM_ID/assets" \
   -H "Content-Type: application/json" \
   -H "X-User-Id: $USER_ID" \
   -d "{\"sessionId\":\"$SESSION_ID\"}"
 
 # First 1k remaster is free (free taste); run Worker to complete job
-curl -sS -X POST "http://localhost:5000/api/v1/assets/$ASSET_ID/remaster-jobs" \
+curl -sS -X POST "http://localhost:5055/api/v1/assets/$ASSET_ID/remaster-jobs" \
   -H "Content-Type: application/json" \
   -H "X-User-Id: $USER_ID" \
   -d '{"preset":"damage","targetResolution":"1k"}'
@@ -168,7 +170,7 @@ curl -sS -X POST "http://localhost:5000/api/v1/assets/$ASSET_ID/remaster-jobs" \
 | Key | Default |
 |-----|---------|
 | `ConnectionStrings__Default` | SQL Server on `localhost,1433` (see above) |
-| `Api__PublicBaseUrl` | `http://localhost:5000` |
+| `Api__PublicBaseUrl` | `http://localhost:5055` |
 | `Storage__BlobRoot` | `data/blobs` |
 | `XAI_API_KEY` | Reserved for future xAI integration in the worker |
 

@@ -3,7 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${ROOT}/openapi/v1.json"
-API_URL="${API_URL:-http://localhost:5000}"
+API_URL="${API_URL:-http://localhost:5055}"
 mkdir -p "$(dirname "$OUT")"
 
 if curl -fsS "${API_URL}/swagger/v1/swagger.json" -o "$OUT"; then
