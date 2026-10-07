@@ -14,10 +14,11 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         var connectionString = configuration.GetConnectionString("Default")
-            ?? "Data Source=data/remasterguru.db";
+            ?? throw new InvalidOperationException(
+                "Connection string 'Default' is not configured. Set ConnectionStrings:Default.");
 
         services.AddDbContext<RemasterGuruDbContext>(options =>
-            options.UseSqlite(connectionString));
+            options.UseSqlServer(connectionString));
 
         var blobRoot = configuration["Storage:BlobRoot"] ?? "data/blobs";
         services.AddSingleton<IBlobStorage>(_ => new LocalBlobStorage(blobRoot));
@@ -33,21 +34,10 @@ public static class DependencyInjection
         return services;
     }
 
-    public static async Task EnsureDatabaseCreatedAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
+    public static async Task MigrateDatabaseAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<RemasterGuruDbContext>();
-        var connectionString = db.Database.GetConnectionString() ?? "Data Source=data/remasterguru.db";
-        var dataSource = connectionString.Replace("Data Source=", "", StringComparison.OrdinalIgnoreCase).Trim();
-        if (!Path.IsPathRooted(dataSource))
-        {
-            var dir = Path.GetDirectoryName(dataSource);
-            if (!string.IsNullOrEmpty(dir))
-            {
-                Directory.CreateDirectory(dir);
-            }
-        }
-
-        await db.Database.EnsureCreatedAsync(cancellationToken);
+        await db.Database.MigrateAsync(cancellationToken);
     }
 }

@@ -1,6 +1,6 @@
 # Remaster Guru API
 
-ASP.NET Core minimal API plus a background worker for remaster jobs (SQLite + EF Core in v1).
+ASP.NET Core minimal API plus a background worker for remaster jobs (SQL Server + EF Core).
 
 ## Projects
 
@@ -9,11 +9,48 @@ ASP.NET Core minimal API plus a background worker for remaster jobs (SQLite + EF
 | `src/RemasterGuru.Api` | HTTP API (`/api/v1`) |
 | `src/RemasterGuru.Worker` | Polls queued remaster jobs every 5s |
 | `src/RemasterGuru.Domain` | Entities and enums |
-| `src/RemasterGuru.Infrastructure` | EF Core SQLite, repositories, local blob storage |
+| `src/RemasterGuru.Infrastructure` | EF Core SQL Server, repositories, local blob storage |
 
 ## Prerequisites
 
 - [.NET SDK](https://dotnet.microsoft.com/download) 10.x
+- [Docker](https://www.docker.com/) (for local SQL Server)
+
+## Database (Docker SQL Server)
+
+```bash
+cp .env.example .env   # optional; compose defaults match .env.example
+docker compose up -d
+docker compose ps    # wait until sqlserver is healthy
+```
+
+Default SA password (dev only): `RemasterGuru_Dev1!` — set `SA_PASSWORD` in `.env`.
+
+**Connection string** (also in `appsettings.Development.json`):
+
+```
+Server=localhost,1433;Database=RemasterGuru;User Id=sa;Password=RemasterGuru_Dev1!;TrustServerCertificate=True;Encrypt=False
+```
+
+Apply EF Core migrations:
+
+```bash
+dotnet ef database update \
+  --project src/RemasterGuru.Infrastructure \
+  --startup-project src/RemasterGuru.Api
+```
+
+The API and Worker call `Migrate` on startup, so a fresh database is created automatically when SQL Server is up.
+
+Create a new migration after model changes:
+
+```bash
+dotnet ef migrations add <Name> \
+  --project src/RemasterGuru.Infrastructure \
+  --startup-project src/RemasterGuru.Api
+```
+
+Install the EF CLI once if needed: `dotnet tool install --global dotnet-ef`
 
 ## Run locally
 
@@ -23,13 +60,37 @@ From this repository root:
 # API (http://localhost:5000)
 dotnet run --project src/RemasterGuru.Api
 
-# Worker (processes remaster jobs; share same data/remasterguru.db)
+# Worker (processes remaster jobs; same SQL Server database)
 dotnet run --project src/RemasterGuru.Worker
 ```
 
 - Health: `GET http://localhost:5000/health`
 - Swagger UI (Development): `http://localhost:5000/swagger`
-- OpenAPI JSON: `http://localhost:5000/openapi/v1.json`
+- OpenAPI 3 (Swashbuckle): `http://localhost:5000/swagger/v1/swagger.json`
+- Committed contract: `openapi/v1.json` (regenerate when endpoints change)
+
+### Export OpenAPI
+
+With the API running:
+
+```bash
+curl -fsS http://localhost:5000/swagger/v1/swagger.json -o openapi/v1.json
+```
+
+Or use the helper script (curl first, then `swagger tofile` fallback):
+
+```bash
+chmod +x scripts/export-openapi.sh
+./scripts/export-openapi.sh
+```
+
+Alternative without a running server:
+
+```bash
+dotnet build src/RemasterGuru.Api
+dotnet tool install --global Swashbuckle.AspNetCore.Cli
+swagger tofile src/RemasterGuru.Api/bin/Debug/net10.0/RemasterGuru.Api.dll v1 -o openapi/v1.json
+```
 
 ## Dev authentication
 
@@ -45,10 +106,8 @@ The API auto-creates a `User` row on first request. Replace with JWT/cookies bef
 
 | Path | Purpose |
 |------|---------|
-| `data/remasterguru.db` | SQLite database |
 | `data/blobs/` | Local upload blobs (v1) |
-
-`EnsureCreated` runs on API and Worker startup in dev.
+| `.env` | Docker `SA_PASSWORD` (copy from `.env.example`) |
 
 ## Uploads (v1)
 
@@ -108,7 +167,7 @@ curl -sS -X POST "http://localhost:5000/api/v1/assets/$ASSET_ID/remaster-jobs" \
 
 | Key | Default |
 |-----|---------|
-| `ConnectionStrings__Default` | `Data Source=data/remasterguru.db` |
+| `ConnectionStrings__Default` | SQL Server on `localhost,1433` (see above) |
 | `Api__PublicBaseUrl` | `http://localhost:5000` |
 | `Storage__BlobRoot` | `data/blobs` |
 | `XAI_API_KEY` | Reserved for future xAI integration in the worker |

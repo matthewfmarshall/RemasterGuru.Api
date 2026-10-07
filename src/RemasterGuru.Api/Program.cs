@@ -20,7 +20,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-await app.Services.EnsureDatabaseCreatedAsync();
+await app.Services.MigrateDatabaseAsync();
 
 if (app.Environment.IsDevelopment())
 {

@@ -15,7 +15,7 @@ public sealed class RemasterJobWorker(
     {
         logger.LogInformation("RemasterGuru remaster worker started (poll every 5s; xAI not integrated)");
 
-        await services.EnsureDatabaseCreatedAsync(stoppingToken);
+        await services.MigrateDatabaseAsync(stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {

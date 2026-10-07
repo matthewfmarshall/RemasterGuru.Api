@@ -481,6 +481,6 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 
-# Local dev database and uploads
-data/
+# Local dev database and uploads (repo root only; not Infrastructure/Data)
+/data/
 .nuget-cache/
