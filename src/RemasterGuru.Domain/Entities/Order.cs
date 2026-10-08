@@ -10,6 +10,8 @@ public class Order
     public string Sku { get; set; } = string.Empty;
     public OrderStatus Status { get; set; }
     public string? StripeCheckoutSessionId { get; set; }
+    public string? StripePaymentIntentId { get; set; }
+    public string FulfillmentProvider { get; set; } = "rpi";
     public string? LabOrderId { get; set; }
     public string? TrackingUrl { get; set; }
     public int AmountCents { get; set; }

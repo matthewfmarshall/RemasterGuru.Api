@@ -7,14 +7,23 @@ namespace RemasterGuru.Infrastructure.Repositories;
 public interface IOrderRepository
 {
     Task<Order?> GetForUserAsync(Guid orderId, Guid userId, CancellationToken cancellationToken = default);
+    Task<Order?> GetByIdAsync(Guid orderId, CancellationToken cancellationToken = default);
+    Task<Order?> GetByStripeCheckoutSessionIdAsync(string sessionId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Order>> ListForUserAsync(Guid userId, CancellationToken cancellationToken = default);
     Task AddAsync(Order order, CancellationToken cancellationToken = default);
+    Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }
 
 public sealed class OrderRepository(RemasterGuruDbContext db) : IOrderRepository
 {
     public Task<Order?> GetForUserAsync(Guid orderId, Guid userId, CancellationToken cancellationToken = default) =>
         db.Orders.FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId, cancellationToken);
+
+    public Task<Order?> GetByIdAsync(Guid orderId, CancellationToken cancellationToken = default) =>
+        db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+
+    public Task<Order?> GetByStripeCheckoutSessionIdAsync(string sessionId, CancellationToken cancellationToken = default) =>
+        db.Orders.FirstOrDefaultAsync(o => o.StripeCheckoutSessionId == sessionId, cancellationToken);
 
     public async Task<IReadOnlyList<Order>> ListForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
         await db.Orders
@@ -27,4 +36,7 @@ public sealed class OrderRepository(RemasterGuruDbContext db) : IOrderRepository
         db.Orders.Add(order);
         await db.SaveChangesAsync(cancellationToken);
     }
+
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
+        db.SaveChangesAsync(cancellationToken);
 }

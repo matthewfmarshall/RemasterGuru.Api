@@ -56,6 +56,12 @@ public sealed class DevUserAuthMiddleware(RequestDelegate next)
             return true;
         }
 
+        if (request.Method.Equals("POST", StringComparison.OrdinalIgnoreCase)
+            && path.Equals("/api/v1/webhooks/stripe", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
         return false;
     }
 

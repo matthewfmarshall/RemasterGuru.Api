@@ -130,6 +130,7 @@ Upload bytes with `PUT` (no `X-User-Id` required). Then register the asset:
 | Remaster | `POST /api/v1/assets/{id}/remaster-jobs`, `GET /api/v1/remaster-jobs/{id}`, `GET /api/v1/assets/{id}/remaster-jobs` |
 | Credits | `GET /api/v1/credits/balance`, `GET /api/v1/credits/ledger`, `POST /api/v1/credits/grants` (Development only) |
 | Orders | `POST /api/v1/albums/{id}/orders`, `GET /api/v1/orders`, `GET /api/v1/orders/{id}` |
+| Checkout (Stripe) | `GET /api/v1/checkout/products`, `POST /api/v1/checkout/sessions`, `POST /api/v1/webhooks/stripe` |
 
 Full contract shapes: Project Context doc `docs/api-v1.md`.
 
@@ -173,6 +174,10 @@ curl -sS -X POST "http://localhost:5055/api/v1/assets/$ASSET_ID/remaster-jobs" \
 | `Api__PublicBaseUrl` | `http://localhost:5055` |
 | `Storage__BlobRoot` | `data/blobs` |
 | `XAI_API_KEY` | xAI API key for real remasters in the Worker (see below) |
+| `Stripe__SecretKey` | Stripe test secret key (`sk_test_…`) on the **API** |
+| `Stripe__WebhookSecret` | Stripe webhook signing secret (`whsec_…`) on the **API** |
+| `Stripe__PublishableKey` | Optional; checkout is server-hosted (Web does not need this for v1) |
+| `App__WebBaseUrl` | Web app origin for Stripe success/cancel URLs (default `http://localhost:3000`) |
 
 ### xAI remaster (Worker)
 
@@ -189,6 +194,41 @@ dotnet user-secrets set XAI_API_KEY "xai-…" \
 ```
 
 Restart the Worker after changing the key.
+
+### Stripe checkout (API, test mode)
+
+Book checkout uses [Stripe Checkout](https://stripe.com/docs/checkout) in **payment** mode. Products: `book-restore-bundle` (~$89, includes 8 remaster credits) and `book-album-only` (~$59). US shipping only.
+
+1. In the [Stripe Dashboard](https://dashboard.stripe.com/test/apikeys), copy the **test** secret key and (optionally) publishable key.
+2. Configure the API (never commit keys):
+
+```bash
+dotnet user-secrets set Stripe:SecretKey "sk_test_…" \
+  --project src/RemasterGuru.Api
+dotnet user-secrets set Stripe:WebhookSecret "whsec_…" \
+  --project src/RemasterGuru.Api
+```
+
+Or export `Stripe__SecretKey` and `Stripe__WebhookSecret` in your shell.
+
+3. **Local webhooks** (optional but needed to mark orders paid and grant credits):
+
+```bash
+stripe listen --forward-to http://localhost:5055/api/v1/webhooks/stripe
+```
+
+Use the signing secret printed by `stripe listen` as `Stripe:WebhookSecret` while testing locally.
+
+4. Create a session (album must be `ready_for_print`, `shippingCountry` must be `US`):
+
+```bash
+curl -sS -X POST http://localhost:5055/api/v1/checkout/sessions \
+  -H "Content-Type: application/json" \
+  -H "X-User-Id: 84AD0816-39F0-480F-93F9-2D370D27CA7C" \
+  -d '{"albumId":"<album-uuid>","productSku":"book-restore-bundle","shippingCountry":"US"}'
+```
+
+Open the returned `url` in a browser; use test card `4242 4242 4242 4242`.
 
 ## VS Code
 

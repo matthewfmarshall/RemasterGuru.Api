@@ -10,6 +10,11 @@ public interface ICreditRepository
     Task<int> GetBalanceAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<CreditLedgerEntry>> GetLedgerAsync(Guid userId, int skip, int take, CancellationToken cancellationToken = default);
     Task AddEntryAsync(CreditLedgerEntry entry, CancellationToken cancellationToken = default);
+    Task<bool> HasLedgerEntryAsync(
+        Guid userId,
+        Guid referenceId,
+        CreditLedgerReason reason,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed class CreditRepository(RemasterGuruDbContext db) : ICreditRepository
@@ -36,6 +41,15 @@ public sealed class CreditRepository(RemasterGuruDbContext db) : ICreditReposito
         db.CreditLedgerEntries.Add(entry);
         await db.SaveChangesAsync(cancellationToken);
     }
+
+    public Task<bool> HasLedgerEntryAsync(
+        Guid userId,
+        Guid referenceId,
+        CreditLedgerReason reason,
+        CancellationToken cancellationToken = default) =>
+        db.CreditLedgerEntries.AnyAsync(
+            e => e.UserId == userId && e.ReferenceId == referenceId && e.Reason == reason,
+            cancellationToken);
 }
 
 public interface IUserRepository

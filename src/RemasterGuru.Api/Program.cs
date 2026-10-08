@@ -1,4 +1,5 @@
 using RemasterGuru.Api.Auth;
+using RemasterGuru.Api.Checkout;
 using RemasterGuru.Api.Endpoints;
 using RemasterGuru.Infrastructure;
 
@@ -44,5 +45,6 @@ app.UseMiddleware<DevUserAuthMiddleware>();
 
 app.MapGet("/health", () => Results.Json(new { status = "ok" }));
 app.MapApiV1();
+app.MapStripeCheckout();
 
 app.Run();

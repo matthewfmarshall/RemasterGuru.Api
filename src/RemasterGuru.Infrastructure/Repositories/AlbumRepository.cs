@@ -8,6 +8,7 @@ public interface IAlbumRepository
 {
     Task<IReadOnlyList<Album>> ListForUserAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<Album?> GetForUserAsync(Guid albumId, Guid userId, CancellationToken cancellationToken = default);
+    Task<Album?> GetByIdAsync(Guid albumId, CancellationToken cancellationToken = default);
     Task AddAsync(Album album, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }
@@ -22,6 +23,9 @@ public sealed class AlbumRepository(RemasterGuruDbContext db) : IAlbumRepository
 
     public Task<Album?> GetForUserAsync(Guid albumId, Guid userId, CancellationToken cancellationToken = default) =>
         db.Albums.FirstOrDefaultAsync(a => a.Id == albumId && a.UserId == userId && a.DeletedAt == null, cancellationToken);
+
+    public Task<Album?> GetByIdAsync(Guid albumId, CancellationToken cancellationToken = default) =>
+        db.Albums.FirstOrDefaultAsync(a => a.Id == albumId && a.DeletedAt == null, cancellationToken);
 
     public async Task AddAsync(Album album, CancellationToken cancellationToken = default)
     {
