@@ -14,6 +14,8 @@ public class Order
     public string FulfillmentProvider { get; set; } = "rpi";
     public string? LabOrderId { get; set; }
     public string? TrackingUrl { get; set; }
+    public DateTimeOffset? SubmittedToLabAt { get; set; }
+    public string? LabPayloadJson { get; set; }
     public int AmountCents { get; set; }
     public string ShippingAddressJson { get; set; } = "{}";
     public DateTimeOffset CreatedAt { get; set; }

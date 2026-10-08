@@ -79,7 +79,10 @@ public class RemasterGuruDbContext(DbContextOptions<RemasterGuruDbContext> optio
             e.Property(x => x.StripeCheckoutSessionId).HasMaxLength(256);
             e.Property(x => x.StripePaymentIntentId).HasMaxLength(256);
             e.Property(x => x.FulfillmentProvider).HasMaxLength(32);
+            e.Property(x => x.LabOrderId).HasMaxLength(128);
+            e.Property(x => x.TrackingUrl).HasMaxLength(2048);
             e.HasIndex(x => x.StripeCheckoutSessionId);
+            e.HasIndex(x => x.LabOrderId);
             e.HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(x => x.Album).WithMany(a => a.Orders).HasForeignKey(x => x.AlbumId).OnDelete(DeleteBehavior.Cascade);
         });

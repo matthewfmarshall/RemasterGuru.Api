@@ -129,8 +129,9 @@ Upload bytes with `PUT` (no `X-User-Id` required). Then register the asset:
 | Assets | `POST /api/v1/assets/upload-sessions`, `GET/POST /api/v1/albums/{id}/assets`, `GET/DELETE /api/v1/assets/{id}`, `GET /api/v1/assets/{id}/original`, `GET /api/v1/assets/{id}/restored` |
 | Remaster | `POST /api/v1/assets/{id}/remaster-jobs`, `GET /api/v1/remaster-jobs/{id}`, `GET /api/v1/assets/{id}/remaster-jobs` |
 | Credits | `GET /api/v1/credits/balance`, `GET /api/v1/credits/ledger`, `POST /api/v1/credits/grants` (Development only) |
-| Orders | `POST /api/v1/albums/{id}/orders`, `GET /api/v1/orders`, `GET /api/v1/orders/{id}` |
+| Orders | `POST /api/v1/albums/{id}/orders`, `GET /api/v1/orders`, `GET /api/v1/orders/{id}`, `POST /api/v1/orders/{id}/submit-to-lab` |
 | Checkout (Stripe) | `GET /api/v1/checkout/products`, `POST /api/v1/checkout/sessions`, `POST /api/v1/webhooks/stripe` |
+| Print (RPI stub) | `POST /api/v1/webhooks/rpi` |
 
 Full contract shapes: Project Context doc `docs/api-v1.md`.
 
@@ -178,6 +179,11 @@ curl -sS -X POST "http://localhost:5055/api/v1/assets/$ASSET_ID/remaster-jobs" \
 | `Stripe__WebhookSecret` | Stripe webhook signing secret (`whsec_…`) on the **API** |
 | `Stripe__PublishableKey` | Optional; checkout is server-hosted (Web does not need this for v1) |
 | `App__WebBaseUrl` | Web app origin for Stripe success/cancel URLs (default `http://localhost:3000`) |
+| `Rpi__ApiKey` | RPI API key (optional; without key + base URL the provider runs in **dev stub** mode) |
+| `Rpi__BaseUrl` | RPI API base URL (optional) |
+| `Rpi__WebhookSecret` | When set, `POST /api/v1/webhooks/rpi` requires header `X-Rpi-Webhook-Secret` |
+| `Print__AutoSubmitInDevelopment` | `true` to poll `paid` / `awaiting_fulfillment` orders and auto-submit to lab (Development only) |
+| `Print__AutoSubmitIntervalSeconds` | Poll interval for auto-submit (default `30`) |
 
 ### xAI remaster (Worker)
 
@@ -229,6 +235,44 @@ curl -sS -X POST http://localhost:5055/api/v1/checkout/sessions \
 ```
 
 Open the returned `url` in a browser; use test card `4242 4242 4242 4242`.
+
+### RPI print fulfillment (B9 stub)
+
+v1 targets **[RPI](https://www.rpiprint.com/)** for the 24-page US hardcover SKU. B9 does **not** call the real RPI HTTP API yet — it logs a structured payload and assigns a fake `labOrderId` like `rpi-stub-{guid}` unless you later wire production credentials.
+
+**Stub vs production**
+
+| Mode | When | Behavior |
+|------|------|----------|
+| Dev stub | `Rpi:ApiKey` or `Rpi:BaseUrl` missing | Log payload + `rpi-stub-*` lab id |
+| Credentials present | Both set | Still stub in B9; logs that real API is not wired |
+
+**Manual test sequence** (after SQL Server + API are running):
+
+1. Create album, mark `ready_for_print`, run Stripe checkout + `stripe listen` webhook → order becomes `awaiting_fulfillment`.
+2. Submit to lab (requires `X-User-Id`):
+
+```bash
+curl -sS -X POST "http://localhost:5055/api/v1/orders/<order-id>/submit-to-lab" \
+  -H "X-User-Id: <user-guid>"
+```
+
+3. Simulate RPI status webhook (optional secret):
+
+```bash
+curl -sS -X POST http://localhost:5055/api/v1/webhooks/rpi \
+  -H "Content-Type: application/json" \
+  -H "X-Rpi-Webhook-Secret: <same-as-Rpi__WebhookSecret-if-set>" \
+  -d '{"labOrderId":"<labOrderId-from-step-2>","status":"in_production"}'
+
+curl -sS -X POST http://localhost:5055/api/v1/webhooks/rpi \
+  -H "Content-Type: application/json" \
+  -d '{"labOrderId":"<labOrderId>","status":"shipped","trackingUrl":"https://example.com/track/1"}'
+```
+
+4. Poll `GET /api/v1/orders/{orderId}` for `submitted_to_lab`, `in_production`, or `shipped`.
+
+Optional: set `Print__AutoSubmitInDevelopment=true` in Development to auto-submit eligible orders on a timer (no Worker required).
 
 ## VS Code
 

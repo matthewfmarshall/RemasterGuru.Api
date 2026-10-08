@@ -98,6 +98,7 @@ public static class ContractMaps
         OrderStatus.Paid => "paid",
         OrderStatus.AwaitingFulfillment => "awaiting_fulfillment",
         OrderStatus.SubmittedToLab => "submitted_to_lab",
+        OrderStatus.InProduction => "in_production",
         OrderStatus.Shipped => "shipped",
         OrderStatus.Cancelled => "cancelled",
         _ => "draft"
@@ -187,6 +188,7 @@ public static class ContractMaps
         fulfillmentProvider = order.FulfillmentProvider,
         labOrderId = order.LabOrderId,
         trackingUrl = order.TrackingUrl,
+        submittedToLabAt = order.SubmittedToLabAt,
         amountCents = order.AmountCents,
         createdAt = order.CreatedAt
     };

@@ -1,6 +1,8 @@
 using RemasterGuru.Api.Auth;
 using RemasterGuru.Api.Checkout;
 using RemasterGuru.Api.Endpoints;
+using RemasterGuru.Api.HostedServices;
+using RemasterGuru.Api.Print;
 using RemasterGuru.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +13,13 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUser, CurrentUserAccessor>();
 builder.Services.AddRemasterGuruInfrastructure(builder.Configuration);
+builder.Services.AddSingleton<IPrintFulfillmentProvider, RpiPrintFulfillmentProvider>();
+builder.Services.AddScoped<IPrintOrderSubmissionService, PrintOrderSubmissionService>();
+if (builder.Environment.IsDevelopment()
+    && builder.Configuration.GetValue("Print:AutoSubmitInDevelopment", false))
+{
+    builder.Services.AddHostedService<PrintAutoSubmitHostedService>();
+}
 if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddCors(options =>
@@ -46,5 +55,6 @@ app.UseMiddleware<DevUserAuthMiddleware>();
 app.MapGet("/health", () => Results.Json(new { status = "ok" }));
 app.MapApiV1();
 app.MapStripeCheckout();
+app.MapPrintFulfillment();
 
 app.Run();

@@ -7,6 +7,7 @@ public enum OrderStatus
     Paid,
     AwaitingFulfillment,
     SubmittedToLab,
+    InProduction,
     Shipped,
     Cancelled
 }

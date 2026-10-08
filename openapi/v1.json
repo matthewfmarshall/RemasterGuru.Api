@@ -5,6 +5,51 @@
     "version": "1.0"
   },
   "paths": {
+    "/api/v1/webhooks/rpi": {
+      "post": {
+        "tags": [
+          "PrintFulfillmentEndpoints"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RpiWebhookPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/submit-to-lab": {
+      "post": {
+        "tags": [
+          "PrintFulfillmentEndpoints"
+        ],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/health": {
       "get": {
         "tags": [
@@ -642,10 +687,22 @@
         }
       }
     },
+    "/api/v1/webhooks/stripe": {
+      "post": {
+        "tags": [
+          "StripeCheckoutEndpoints"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/checkout/sessions": {
       "post": {
         "tags": [
-          "RemasterGuru.Api"
+          "StripeCheckoutEndpoints"
         ],
         "requestBody": {
           "content": {
@@ -663,22 +720,24 @@
           }
         }
       }
-    },
-    "/api/v1/webhooks/stripe": {
-      "post": {
-        "tags": [
-          "RemasterGuru.Api"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK"
-          }
-        }
-      }
     }
   },
   "components": {
     "schemas": {
+      "CreateAlbumRequest": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "templateId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "CreateCheckoutSessionRequest": {
         "type": "object",
         "properties": {
@@ -691,20 +750,6 @@
             "nullable": true
           },
           "shippingCountry": {
-            "type": "string",
-            "nullable": true
-          }
-        },
-        "additionalProperties": false
-      },
-      "CreateAlbumRequest": {
-        "type": "object",
-        "properties": {
-          "title": {
-            "type": "string",
-            "nullable": true
-          },
-          "templateId": {
             "type": "string",
             "nullable": true
           }
@@ -819,8 +864,7 @@
           },
           "displayVersion": {
             "type": "string",
-            "nullable": true,
-            "description": "Album grid and book preview: original or restored"
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -833,6 +877,24 @@
             "format": "uuid"
           },
           "caption": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RpiWebhookPayload": {
+        "type": "object",
+        "properties": {
+          "labOrderId": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "nullable": true
+          },
+          "trackingUrl": {
             "type": "string",
             "nullable": true
           }
@@ -877,7 +939,13 @@
   },
   "tags": [
     {
+      "name": "PrintFulfillmentEndpoints"
+    },
+    {
       "name": "RemasterGuru.Api"
+    },
+    {
+      "name": "StripeCheckoutEndpoints"
     }
   ]
 }

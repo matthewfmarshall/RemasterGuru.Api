@@ -226,7 +226,8 @@ public static class StripeCheckoutEndpoints
             return;
         }
 
-        if (order.Status is OrderStatus.Paid or OrderStatus.AwaitingFulfillment or OrderStatus.SubmittedToLab or OrderStatus.Shipped)
+        if (order.Status is OrderStatus.Paid or OrderStatus.AwaitingFulfillment or OrderStatus.SubmittedToLab
+            or OrderStatus.InProduction or OrderStatus.Shipped)
         {
             return;
         }
