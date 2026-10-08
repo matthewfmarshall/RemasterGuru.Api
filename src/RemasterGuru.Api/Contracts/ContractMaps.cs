@@ -20,6 +20,18 @@ public static class ContractMaps
         _ => AlbumStatus.Draft
     };
 
+    public static string ToApi(AssetDisplayVersion version) => version switch
+    {
+        AssetDisplayVersion.Restored => "restored",
+        _ => "original"
+    };
+
+    public static AssetDisplayVersion ParseDisplayVersion(string? value) => value switch
+    {
+        "restored" => AssetDisplayVersion.Restored,
+        _ => AssetDisplayVersion.Original
+    };
+
     public static string ToApi(AssetVersionKind kind) => kind switch
     {
         AssetVersionKind.Original => "original",
@@ -128,6 +140,7 @@ public static class ContractMaps
                     contentType = original.ContentType
                 },
             activeVersionId = asset.ActiveVersionId,
+            displayVersion = ToApi(asset.DisplayVersion),
             versions = asset.Versions
                 .OrderBy(v => v.CreatedAt)
                 .Select(v => new

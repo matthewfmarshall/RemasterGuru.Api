@@ -1,3 +1,5 @@
+using RemasterGuru.Domain.Enums;
+
 namespace RemasterGuru.Domain.Entities;
 
 public class Asset
@@ -9,6 +11,8 @@ public class Asset
     /// <summary>Page order within the album book (0-based).</summary>
     public int OrderIndex { get; set; }
     public Guid? ActiveVersionId { get; set; }
+    /// <summary>Which version to show in album grid and book preview.</summary>
+    public AssetDisplayVersion DisplayVersion { get; set; } = AssetDisplayVersion.Original;
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }
 

@@ -752,6 +752,11 @@
           "caption": {
             "type": "string",
             "nullable": true
+          },
+          "displayVersion": {
+            "type": "string",
+            "nullable": true,
+            "description": "Album grid and book preview: original or restored"
           }
         },
         "additionalProperties": false

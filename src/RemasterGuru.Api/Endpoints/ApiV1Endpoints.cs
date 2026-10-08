@@ -446,6 +446,20 @@ public static class ApiV1Endpoints
                 asset.Caption = string.IsNullOrWhiteSpace(body.Caption) ? null : body.Caption.Trim();
             }
 
+            if (body.DisplayVersion is not null)
+            {
+                var displayVersion = ContractMaps.ParseDisplayVersion(body.DisplayVersion);
+                if (displayVersion == AssetDisplayVersion.Restored
+                    && !asset.Versions.Any(v => v.Kind == AssetVersionKind.Restored))
+                {
+                    return Results.Problem(
+                        "No restored version is available for this photo yet.",
+                        statusCode: StatusCodes.Status400BadRequest);
+                }
+
+                asset.DisplayVersion = displayVersion;
+            }
+
             await assets.SaveChangesAsync(ct);
             var apiBase = config["Api:PublicBaseUrl"] ?? "http://localhost:5055";
             return Results.Json(ContractMaps.ToAssetDto(asset, apiBase));
@@ -805,7 +819,7 @@ public static class ApiV1Endpoints
     public sealed record CreateAlbumRequest(string Title, string? TemplateId);
     public sealed record PatchAlbumRequest(string? Title, string? TemplateId, string? Status);
     public sealed record PatchAlbumLayoutRequest(IReadOnlyList<Guid>? OrderedAssetIds);
-    public sealed record PatchAssetRequest(string? Caption);
+    public sealed record PatchAssetRequest(string? Caption, string? DisplayVersion);
     public sealed record CreateUploadSessionRequest(Guid AlbumId, string? FileName, string? ContentType, long ByteSize);
     public sealed record RegisterAssetRequest(Guid SessionId, string? Caption);
     public sealed record CreateRemasterJobRequest(string? Preset, string? TargetResolution, string? PromptOverride);
