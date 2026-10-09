@@ -343,6 +343,44 @@
             "description": "OK"
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "ApiV1"
+        ],
+        "parameters": [
+          {
+            "name": "albumId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "albumId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "removedAssetCount": {
+                      "type": "integer",
+                      "format": "int32"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/v1/assets/{assetId}": {

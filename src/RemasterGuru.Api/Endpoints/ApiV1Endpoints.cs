@@ -116,6 +116,36 @@ public static class ApiV1Endpoints
             return Results.Json(ContractMaps.ToAlbumDto(album));
         });
 
+        api.MapDelete("/albums/{albumId:guid}/assets", async (
+            Guid albumId,
+            ICurrentUser user,
+            IAlbumRepository albums,
+            IAssetRepository assets,
+            IBlobStorage blobs,
+            CancellationToken ct) =>
+        {
+            var album = await albums.GetForUserAsync(albumId, user.UserId, ct);
+            if (album is null)
+            {
+                return Results.Problem("Album not found.", statusCode: StatusCodes.Status404NotFound);
+            }
+
+            var toRemove = await assets.ListAllForAlbumPurgeAsync(albumId, user.UserId, ct);
+            foreach (var asset in toRemove)
+            {
+                foreach (var version in asset.Versions)
+                {
+                    blobs.TryDelete(version.StorageKey);
+                }
+            }
+
+            var removedCount = await assets.HardDeleteAssetsAsync(toRemove, ct);
+            album.UpdatedAt = DateTimeOffset.UtcNow;
+            await albums.SaveChangesAsync(ct);
+
+            return Results.Json(new { albumId, removedAssetCount = removedCount });
+        });
+
         api.MapDelete("/albums/{albumId:guid}", async (
             Guid albumId,
             ICurrentUser user,

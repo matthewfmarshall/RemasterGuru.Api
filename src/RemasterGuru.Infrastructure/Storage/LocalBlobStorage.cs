@@ -6,6 +6,7 @@ public interface IBlobStorage
     Task SaveAsync(string storageKey, Stream content, CancellationToken cancellationToken = default);
     string GetAbsolutePath(string storageKey);
     bool Exists(string storageKey);
+    bool TryDelete(string storageKey);
     Stream OpenRead(string storageKey);
 }
 
@@ -36,6 +37,18 @@ public sealed class LocalBlobStorage : IBlobStorage
     }
 
     public bool Exists(string storageKey) => File.Exists(GetAbsolutePath(storageKey));
+
+    public bool TryDelete(string storageKey)
+    {
+        var path = GetAbsolutePath(storageKey);
+        if (!File.Exists(path))
+        {
+            return false;
+        }
+
+        File.Delete(path);
+        return true;
+    }
 
     public Stream OpenRead(string storageKey) => File.OpenRead(GetAbsolutePath(storageKey));
 }

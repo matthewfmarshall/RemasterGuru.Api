@@ -12,6 +12,11 @@ public interface IAssetRepository
     Task<Asset?> GetWithVersionsForUserAsync(Guid assetId, Guid userId, CancellationToken cancellationToken = default);
     Task AddAsync(Asset asset, CancellationToken cancellationToken = default);
     Task AddVersionAsync(AssetVersion version, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<Asset>> ListAllForAlbumPurgeAsync(
+        Guid albumId,
+        Guid userId,
+        CancellationToken cancellationToken = default);
+    Task<int> HardDeleteAssetsAsync(IReadOnlyList<Asset> assets, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }
 
@@ -50,6 +55,42 @@ public sealed class AssetRepository(RemasterGuruDbContext db) : IAssetRepository
     {
         db.AssetVersions.Add(version);
         await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Asset>> ListAllForAlbumPurgeAsync(
+        Guid albumId,
+        Guid userId,
+        CancellationToken cancellationToken = default) =>
+        await db.Assets
+            .Include(a => a.Versions)
+            .Include(a => a.RemasterJobs)
+            .Where(a => a.AlbumId == albumId && a.UserId == userId && a.DeletedAt == null)
+            .ToListAsync(cancellationToken);
+
+    public async Task<int> HardDeleteAssetsAsync(
+        IReadOnlyList<Asset> assets,
+        CancellationToken cancellationToken = default)
+    {
+        if (assets.Count == 0)
+        {
+            return 0;
+        }
+
+        var assetIds = assets.Select(a => a.Id).ToList();
+        var sessions = await db.UploadSessions
+            .Where(s => assetIds.Contains(s.AssetId))
+            .ToListAsync(cancellationToken);
+        db.UploadSessions.RemoveRange(sessions);
+
+        foreach (var asset in assets)
+        {
+            db.RemasterJobs.RemoveRange(asset.RemasterJobs);
+            db.AssetVersions.RemoveRange(asset.Versions);
+        }
+
+        db.Assets.RemoveRange(assets);
+        await db.SaveChangesAsync(cancellationToken);
+        return assets.Count;
     }
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>

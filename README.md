@@ -126,7 +126,7 @@ Upload bytes with `PUT` (no `X-User-Id` required). Then register the asset:
 | Area | Endpoints |
 |------|-----------|
 | Albums | `GET/POST /api/v1/albums`, `GET/PATCH/DELETE /api/v1/albums/{id}` |
-| Assets | `POST /api/v1/assets/upload-sessions`, `GET/POST /api/v1/albums/{id}/assets`, `GET/DELETE /api/v1/assets/{id}`, `GET /api/v1/assets/{id}/original`, `GET /api/v1/assets/{id}/restored` |
+| Assets | `POST /api/v1/assets/upload-sessions`, `GET/POST /api/v1/albums/{id}/assets`, `DELETE /api/v1/albums/{id}/assets` (purge all photos), `GET/DELETE /api/v1/assets/{id}`, `GET /api/v1/assets/{id}/original`, `GET /api/v1/assets/{id}/restored` |
 | Remaster | `POST /api/v1/assets/{id}/remaster-jobs`, `GET /api/v1/remaster-jobs/{id}`, `GET /api/v1/assets/{id}/remaster-jobs` |
 | Credits | `GET /api/v1/credits/balance`, `GET /api/v1/credits/ledger`, `POST /api/v1/credits/grants` (Development only) |
 | Orders | `POST /api/v1/albums/{id}/orders`, `GET /api/v1/orders`, `GET /api/v1/orders/{id}`, `POST /api/v1/orders/{id}/submit-to-lab` |
