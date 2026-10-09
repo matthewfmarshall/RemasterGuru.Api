@@ -269,6 +269,29 @@
         }
       }
     },
+    "/api/v1/albums/{albumId}/accept-print-warnings": {
+      "post": {
+        "tags": [
+          "RemasterGuru.Api"
+        ],
+        "parameters": [
+          {
+            "name": "albumId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/assets/upload-sessions": {
       "post": {
         "tags": [
@@ -902,6 +925,10 @@
           },
           "displayVersion": {
             "type": "string",
+            "nullable": true
+          },
+          "acceptedForPrint": {
+            "type": "boolean",
             "nullable": true
           }
         },

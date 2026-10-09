@@ -161,6 +161,7 @@ public static class ContractMaps
                 },
             activeVersionId = asset.ActiveVersionId,
             displayVersion = ToApi(asset.DisplayVersion),
+            acceptedForPrint = asset.AcceptedForPrint,
             versions = asset.Versions
                 .OrderBy(v => v.CreatedAt)
                 .Select(v => new

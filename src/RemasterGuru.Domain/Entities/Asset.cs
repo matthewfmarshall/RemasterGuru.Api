@@ -13,6 +13,8 @@ public class Asset
     public Guid? ActiveVersionId { get; set; }
     /// <summary>Which version to show in album grid and book preview.</summary>
     public AssetDisplayVersion DisplayVersion { get; set; } = AssetDisplayVersion.Original;
+    /// <summary>User accepted print-quality warnings for this page.</summary>
+    public bool AcceptedForPrint { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset? DeletedAt { get; set; }
 

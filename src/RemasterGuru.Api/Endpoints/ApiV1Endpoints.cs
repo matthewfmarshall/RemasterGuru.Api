@@ -298,6 +298,54 @@ public static class ApiV1Endpoints
                 })
             });
         });
+
+        api.MapPost("/albums/{albumId:guid}/accept-print-warnings", async (
+            Guid albumId,
+            ICurrentUser user,
+            IAlbumRepository albums,
+            IAssetRepository assets,
+            IUploadSessionRepository sessions,
+            IBlobStorage blobs,
+            IConfiguration config,
+            CancellationToken ct) =>
+        {
+            var album = await albums.GetForUserAsync(albumId, user.UserId, ct);
+            if (album is null)
+            {
+                return Results.Problem("Album not found.", statusCode: StatusCodes.Status404NotFound);
+            }
+
+            var assetList = await assets.ListForAlbumAsync(albumId, user.UserId, ct);
+            var byteSizes = await sessions.GetCompletedByteSizesForAssetsAsync(assetList.Select(a => a.Id), ct);
+            var readiness = PrintReadinessEvaluator.Evaluate(assetList, byteSizes, blobs);
+            var flaggedIds = readiness.Warnings.Select(w => w.AssetId).Distinct().ToHashSet();
+
+            var accepted = 0;
+            foreach (var asset in assetList)
+            {
+                if (!flaggedIds.Contains(asset.Id) || asset.AcceptedForPrint)
+                {
+                    continue;
+                }
+
+                asset.AcceptedForPrint = true;
+                accepted++;
+            }
+
+            if (accepted > 0)
+            {
+                album.UpdatedAt = DateTimeOffset.UtcNow;
+                await albums.SaveChangesAsync(ct);
+                await assets.SaveChangesAsync(ct);
+            }
+
+            var apiBase = config["Api:PublicBaseUrl"] ?? "http://localhost:5055";
+            return Results.Json(new
+            {
+                acceptedCount = accepted,
+                assets = assetList.Select(a => ContractMaps.ToAssetDto(a, apiBase))
+            });
+        });
     }
 
     private static async Task<object> BuildAlbumLayoutPayloadAsync(
@@ -511,6 +559,11 @@ public static class ApiV1Endpoints
                 }
 
                 asset.DisplayVersion = displayVersion;
+            }
+
+            if (body.AcceptedForPrint is not null)
+            {
+                asset.AcceptedForPrint = body.AcceptedForPrint.Value;
             }
 
             await assets.SaveChangesAsync(ct);
@@ -872,7 +925,7 @@ public static class ApiV1Endpoints
     public sealed record CreateAlbumRequest(string Title, string? TemplateId);
     public sealed record PatchAlbumRequest(string? Title, string? TemplateId, string? Status);
     public sealed record PatchAlbumLayoutRequest(IReadOnlyList<Guid>? OrderedAssetIds);
-    public sealed record PatchAssetRequest(string? Caption, string? DisplayVersion);
+    public sealed record PatchAssetRequest(string? Caption, string? DisplayVersion, bool? AcceptedForPrint);
     public sealed record CreateUploadSessionRequest(Guid AlbumId, string? FileName, string? ContentType, long ByteSize);
     public sealed record RegisterAssetRequest(Guid SessionId, string? Caption);
     public sealed record CreateRemasterJobRequest(string? Preset, string? TargetResolution, string? PromptOverride);
