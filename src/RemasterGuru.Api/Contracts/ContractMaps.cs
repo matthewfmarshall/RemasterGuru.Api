@@ -1,3 +1,4 @@
+using RemasterGuru.Api.Albums;
 using RemasterGuru.Domain.Entities;
 using RemasterGuru.Domain.Enums;
 
@@ -112,6 +113,23 @@ public static class ContractMaps
         status = ToApi(album.Status),
         createdAt = album.CreatedAt,
         updatedAt = album.UpdatedAt
+    };
+
+    public static object ToAlbumListItemDto(
+        Album album,
+        int assetCount,
+        PrintReadinessEvaluator.PrintReadinessResult printReadiness) => new
+    {
+        id = album.Id,
+        title = album.Title,
+        templateId = album.TemplateId,
+        status = ToApi(album.Status),
+        createdAt = album.CreatedAt,
+        updatedAt = album.UpdatedAt,
+        assetCount,
+        maxAssets = AlbumTemplateCatalog.GetPageCount(album.TemplateId),
+        printWarningCount = printReadiness.WarningCount,
+        printWarningSummary = PrintReadinessEvaluator.BuildWarningSummary(printReadiness)
     };
 
     public static object ToAssetDto(Asset asset, string? apiPublicBaseUrl = null)

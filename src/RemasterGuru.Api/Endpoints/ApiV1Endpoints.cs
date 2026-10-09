@@ -30,10 +30,33 @@ public static class ApiV1Endpoints
 
     private static void MapAlbums(RouteGroupBuilder api)
     {
-        api.MapGet("/albums", async (ICurrentUser user, IAlbumRepository albums, CancellationToken ct) =>
+        api.MapGet("/albums", async (
+            ICurrentUser user,
+            IAlbumRepository albums,
+            IAssetRepository assets,
+            IUploadSessionRepository sessions,
+            IBlobStorage blobs,
+            CancellationToken ct) =>
         {
             var list = await albums.ListForUserAsync(user.UserId, ct);
-            return Results.Json(list.Select(ContractMaps.ToAlbumDto));
+            if (list.Count == 0)
+            {
+                return Results.Json(Array.Empty<object>());
+            }
+
+            var albumIds = list.Select(a => a.Id).ToList();
+            var assetsByAlbum = await assets.ListGroupedByAlbumForUserAsync(user.UserId, albumIds, ct);
+            var allAssets = assetsByAlbum.Values.SelectMany(a => a).ToList();
+            var byteSizes = await sessions.GetCompletedByteSizesForAssetsAsync(allAssets.Select(a => a.Id), ct);
+
+            var items = list.Select(album =>
+            {
+                var albumAssets = assetsByAlbum.GetValueOrDefault(album.Id) ?? Array.Empty<Asset>();
+                var readiness = PrintReadinessEvaluator.Evaluate(albumAssets, byteSizes, blobs);
+                return ContractMaps.ToAlbumListItemDto(album, albumAssets.Count, readiness);
+            });
+
+            return Results.Json(items);
         });
 
         api.MapPost("/albums", async (

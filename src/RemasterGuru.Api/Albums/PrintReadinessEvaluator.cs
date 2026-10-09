@@ -81,6 +81,43 @@ public static class PrintReadinessEvaluator
         return new PrintReadinessResult(softCount, warnings.Count, warnings);
     }
 
+    public static string? BuildWarningSummary(PrintReadinessResult readiness)
+    {
+        if (readiness.WarningCount == 0)
+        {
+            return null;
+        }
+
+        var warnings = readiness.Warnings;
+        var codes = warnings.Select(w => w.Code).Distinct().ToList();
+        if (codes.Count == 1)
+        {
+            return codes[0] switch
+            {
+                "low_resolution" => FormatCountWithSuffix(
+                    warnings.Count(w => w.Code == "low_resolution"),
+                    "low resolution"),
+                "small_file" => FormatCount(
+                    warnings.Count(w => w.Code == "small_file"),
+                    "small file",
+                    "small files"),
+                "unknown_dimensions" => FormatCount(
+                    warnings.Count(w => w.Code == "unknown_dimensions"),
+                    "unverified photo",
+                    "unverified photos"),
+                _ => FormatCount(readiness.WarningCount, "warning", "warnings")
+            };
+        }
+
+        return FormatCount(readiness.WarningCount, "warning", "warnings");
+    }
+
+    private static string FormatCount(int count, string singular, string plural) =>
+        count == 1 ? $"1 {singular}" : $"{count} {plural}";
+
+    private static string FormatCountWithSuffix(int count, string suffix) =>
+        count == 1 ? $"1 {suffix}" : $"{count} {suffix}";
+
     private static AssetVersion? ResolvePrintVersion(Asset asset)
     {
         if (asset.ActiveVersionId is not null)

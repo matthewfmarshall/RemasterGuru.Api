@@ -8,6 +8,10 @@ public interface IAssetRepository
 {
     Task<int> CountForAlbumAsync(Guid albumId, Guid userId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Asset>> ListForAlbumAsync(Guid albumId, Guid userId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, IReadOnlyList<Asset>>> ListGroupedByAlbumForUserAsync(
+        Guid userId,
+        IReadOnlyList<Guid> albumIds,
+        CancellationToken cancellationToken = default);
     Task<Asset?> GetForUserAsync(Guid assetId, Guid userId, CancellationToken cancellationToken = default);
     Task<Asset?> GetWithVersionsForUserAsync(Guid assetId, Guid userId, CancellationToken cancellationToken = default);
     Task AddAsync(Asset asset, CancellationToken cancellationToken = default);
@@ -36,6 +40,29 @@ public sealed class AssetRepository(RemasterGuruDbContext db) : IAssetRepository
             .OrderBy(a => a.OrderIndex)
             .ThenBy(a => a.CreatedAt)
             .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<Asset>>> ListGroupedByAlbumForUserAsync(
+        Guid userId,
+        IReadOnlyList<Guid> albumIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (albumIds.Count == 0)
+        {
+            return new Dictionary<Guid, IReadOnlyList<Asset>>();
+        }
+
+        var assets = await db.Assets
+            .Include(a => a.Versions)
+            .Where(a => a.UserId == userId && a.DeletedAt == null && albumIds.Contains(a.AlbumId))
+            .Where(a => db.UploadSessions.Any(s => s.AssetId == a.Id && s.IsCompleted))
+            .OrderBy(a => a.OrderIndex)
+            .ThenBy(a => a.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return assets
+            .GroupBy(a => a.AlbumId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<Asset>)g.ToList());
+    }
 
     public Task<Asset?> GetForUserAsync(Guid assetId, Guid userId, CancellationToken cancellationToken = default) =>
         db.Assets.FirstOrDefaultAsync(a => a.Id == assetId && a.UserId == userId && a.DeletedAt == null, cancellationToken);
