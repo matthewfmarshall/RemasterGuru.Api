@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using RemasterGuru.Infrastructure.Data;
 using RemasterGuru.Infrastructure.Repositories;
 using RemasterGuru.Infrastructure.Storage;
@@ -59,7 +60,10 @@ public static class DependencyInjection
 
         if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
         {
-            // HF staging: migrations are SQL Server–authored; build schema from the model instead.
+            var logger = scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+                .CreateLogger(typeof(DependencyInjection));
+            logger.LogInformation(
+                "SQLite provider: ensuring database schema from current model (HF staging; SQL Server migrations are not applied).");
             await db.Database.EnsureCreatedAsync(cancellationToken);
             return;
         }
