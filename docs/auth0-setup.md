@@ -41,6 +41,8 @@ The .NET API validates **access tokens** whose **audience** matches this API.
    - **Signing Algorithm:** **RS256** (default).
 4. Click **Create**.
 
+> **Required before Web login works.** The Web SDK sends `AUTH0_AUDIENCE` on `/auth/login`. If this API does not exist in the tenant (or the **Identifier** does not match `AUTH0_AUDIENCE` / `Auth0:Audience` exactly), Auth0 fails immediately with `access_denied` and `Service not found: https://api.remasterguru.com` (or whatever audience you configured). The Next.js page may only show *An error occurred during the authorization flow.* — check the browser network tab on `/auth/callback` for the `error_description`. This is an Auth0 Dashboard gap, not a problem with your local Kestrel API process.
+
 Optional: open the new API → **Permissions** and add scopes if you want custom ones later (v1 works with default `openid profile email` plus API authorization).
 
 ---
