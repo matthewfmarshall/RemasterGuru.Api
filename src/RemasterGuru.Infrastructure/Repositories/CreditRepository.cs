@@ -55,7 +55,9 @@ public sealed class CreditRepository(RemasterGuruDbContext db) : ICreditReposito
 public interface IUserRepository
 {
     Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<User?> GetByAuth0SubjectAsync(string auth0Subject, CancellationToken cancellationToken = default);
     Task<User> GetOrCreateAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<User> GetOrCreateByAuth0SubjectAsync(string auth0Subject, CancellationToken cancellationToken = default);
     Task SaveChangesAsync(CancellationToken cancellationToken = default);
 }
 
@@ -63,6 +65,9 @@ public sealed class UserRepository(RemasterGuruDbContext db) : IUserRepository
 {
     public Task<User?> GetByIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
         db.Users.FirstOrDefaultAsync(u => u.Id == userId, cancellationToken);
+
+    public Task<User?> GetByAuth0SubjectAsync(string auth0Subject, CancellationToken cancellationToken = default) =>
+        db.Users.FirstOrDefaultAsync(u => u.Auth0Subject == auth0Subject, cancellationToken);
 
     public async Task<User> GetOrCreateAsync(Guid userId, CancellationToken cancellationToken = default)
     {
@@ -75,6 +80,27 @@ public sealed class UserRepository(RemasterGuruDbContext db) : IUserRepository
         user = new User
         {
             Id = userId,
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        db.Users.Add(user);
+        await db.SaveChangesAsync(cancellationToken);
+        return user;
+    }
+
+    public async Task<User> GetOrCreateByAuth0SubjectAsync(
+        string auth0Subject,
+        CancellationToken cancellationToken = default)
+    {
+        var user = await GetByAuth0SubjectAsync(auth0Subject, cancellationToken);
+        if (user is not null)
+        {
+            return user;
+        }
+
+        user = new User
+        {
+            Id = Guid.NewGuid(),
+            Auth0Subject = auth0Subject,
             CreatedAt = DateTimeOffset.UtcNow
         };
         db.Users.Add(user);

@@ -20,6 +20,8 @@ public class RemasterGuruDbContext(DbContextOptions<RemasterGuruDbContext> optio
         modelBuilder.Entity<User>(e =>
         {
             e.HasKey(x => x.Id);
+            e.Property(x => x.Auth0Subject).HasMaxLength(128);
+            e.HasIndex(x => x.Auth0Subject).IsUnique();
         });
 
         modelBuilder.Entity<Album>(e =>

@@ -1,11 +1,10 @@
+using System.Security.Claims;
 using RemasterGuru.Infrastructure.Repositories;
 
 namespace RemasterGuru.Api.Auth;
 
-public sealed class DevUserAuthMiddleware(RequestDelegate next)
+public sealed class Auth0UserAuthMiddleware(RequestDelegate next)
 {
-    public const string UserIdItemKey = "UserId";
-
     public async Task InvokeAsync(HttpContext context, IUserRepository users)
     {
         if (HttpMethods.IsOptions(context.Request.Method))
@@ -20,15 +19,22 @@ public sealed class DevUserAuthMiddleware(RequestDelegate next)
             return;
         }
 
-        if (!context.Request.Headers.TryGetValue("X-User-Id", out var headerValues)
-            || !Guid.TryParse(headerValues.FirstOrDefault(), out var userId))
+        if (context.User.Identity?.IsAuthenticated != true)
         {
-            await WriteProblemAsync(context, StatusCodes.Status401Unauthorized, "Missing or invalid X-User-Id header.");
+            await WriteProblemAsync(context, StatusCodes.Status401Unauthorized, "Authentication required.");
             return;
         }
 
-        await users.GetOrCreateAsync(userId, context.RequestAborted);
-        context.Items[UserIdItemKey] = userId;
+        var subject = context.User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? context.User.FindFirstValue("sub");
+        if (string.IsNullOrWhiteSpace(subject))
+        {
+            await WriteProblemAsync(context, StatusCodes.Status401Unauthorized, "Token is missing the subject (sub) claim.");
+            return;
+        }
+
+        var user = await users.GetOrCreateByAuth0SubjectAsync(subject, context.RequestAborted);
+        context.Items[DevUserAuthMiddleware.UserIdItemKey] = user.Id;
         await next(context);
     }
 

@@ -1,3 +1,6 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using RemasterGuru.Api.Auth;
 using RemasterGuru.Api.Checkout;
 using RemasterGuru.Api.Endpoints;
@@ -7,6 +10,8 @@ using RemasterGuru.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+var auth0Enabled = Auth0Settings.IsConfigured(builder.Configuration);
+
 builder.Services.AddOpenApi();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -15,23 +20,32 @@ builder.Services.AddScoped<ICurrentUser, CurrentUserAccessor>();
 builder.Services.AddRemasterGuruInfrastructure(builder.Configuration);
 builder.Services.AddSingleton<IPrintFulfillmentProvider, RpiPrintFulfillmentProvider>();
 builder.Services.AddScoped<IPrintOrderSubmissionService, PrintOrderSubmissionService>();
+builder.Services.AddRemasterGuruCors(builder.Configuration);
+
+if (auth0Enabled)
+{
+    var authority = Auth0Settings.GetAuthority(builder.Configuration);
+    var audience = builder.Configuration["Auth0:Audience"]
+        ?? throw new InvalidOperationException("Auth0:Audience is required when Auth0:Domain is set.");
+
+    builder.Services
+        .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.Authority = authority;
+            options.Audience = audience;
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                NameClaimType = ClaimTypes.NameIdentifier,
+            };
+        });
+    builder.Services.AddAuthorization();
+}
+
 if (builder.Environment.IsDevelopment()
     && builder.Configuration.GetValue("Print:AutoSubmitInDevelopment", false))
 {
     builder.Services.AddHostedService<PrintAutoSubmitHostedService>();
-}
-if (builder.Environment.IsDevelopment())
-{
-    builder.Services.AddCors(options =>
-    {
-        options.AddDefaultPolicy(policy =>
-            policy
-                .WithOrigins(
-                    "http://localhost:3000",
-                    "http://127.0.0.1:3000")
-                .AllowAnyHeader()
-                .AllowAnyMethod());
-    });
 }
 
 var app = builder.Build();
@@ -45,12 +59,18 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseCors();
-}
+app.UseCors(CorsPolicyExtensions.AppPolicyName);
 
-app.UseMiddleware<DevUserAuthMiddleware>();
+if (auth0Enabled)
+{
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.UseMiddleware<Auth0UserAuthMiddleware>();
+}
+else
+{
+    app.UseMiddleware<DevUserAuthMiddleware>();
+}
 
 app.MapGet("/health", () => Results.Json(new { status = "ok" }));
 app.MapApiV1();

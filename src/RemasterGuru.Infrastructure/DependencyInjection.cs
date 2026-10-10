@@ -17,8 +17,18 @@ public static class DependencyInjection
             ?? throw new InvalidOperationException(
                 "Connection string 'Default' is not configured. Set ConnectionStrings:Default.");
 
+        var provider = configuration["Database:Provider"]?.Trim() ?? "SqlServer";
         services.AddDbContext<RemasterGuruDbContext>(options =>
-            options.UseSqlServer(connectionString));
+        {
+            if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+            {
+                options.UseSqlite(connectionString);
+            }
+            else
+            {
+                options.UseSqlServer(connectionString);
+            }
+        });
 
         var blobRoot = configuration["Storage:BlobRoot"] ?? "data/blobs";
         services.AddSingleton<IBlobStorage>(_ => new LocalBlobStorage(blobRoot));
