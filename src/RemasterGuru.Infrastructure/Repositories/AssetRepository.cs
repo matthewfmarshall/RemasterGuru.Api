@@ -38,7 +38,7 @@ public sealed class AssetRepository(RemasterGuruDbContext db) : IAssetRepository
             .Where(a => a.AlbumId == albumId && a.UserId == userId && a.DeletedAt == null)
             .Where(a => db.UploadSessions.Any(s => s.AssetId == a.Id && s.IsCompleted))
             .OrderBy(a => a.OrderIndex)
-            .ThenBy(a => a.CreatedAt)
+            .ThenBy(a => a.CreatedAt.UtcDateTime)
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlyList<Asset>>> ListGroupedByAlbumForUserAsync(
@@ -56,7 +56,7 @@ public sealed class AssetRepository(RemasterGuruDbContext db) : IAssetRepository
             .Where(a => a.UserId == userId && a.DeletedAt == null && albumIds.Contains(a.AlbumId))
             .Where(a => db.UploadSessions.Any(s => s.AssetId == a.Id && s.IsCompleted))
             .OrderBy(a => a.OrderIndex)
-            .ThenBy(a => a.CreatedAt)
+            .ThenBy(a => a.CreatedAt.UtcDateTime)
             .ToListAsync(cancellationToken);
 
         return assets

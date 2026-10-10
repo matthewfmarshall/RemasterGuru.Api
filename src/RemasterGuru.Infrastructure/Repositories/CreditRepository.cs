@@ -32,7 +32,7 @@ public sealed class CreditRepository(RemasterGuruDbContext db) : ICreditReposito
         CancellationToken cancellationToken = default) =>
         await db.CreditLedgerEntries
             .Where(e => e.UserId == userId)
-            .OrderByDescending(e => e.CreatedAt)
+            .OrderByDescending(e => e.CreatedAt.UtcDateTime)
             .Skip(skip)
             .Take(take)
             .ToListAsync(cancellationToken);

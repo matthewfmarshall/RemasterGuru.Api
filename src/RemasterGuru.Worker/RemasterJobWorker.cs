@@ -43,7 +43,7 @@ public sealed class RemasterJobWorker(
 
         var jobs = await db.RemasterJobs
             .Where(j => j.Status == RemasterJobStatus.Queued)
-            .OrderBy(j => j.CreatedAt)
+            .OrderBy(j => j.CreatedAt.UtcDateTime)
             .Take(5)
             .ToListAsync(cancellationToken);
 

@@ -22,7 +22,7 @@ public sealed class RemasterJobRepository(RemasterGuruDbContext db) : IRemasterJ
     public async Task<IReadOnlyList<RemasterJob>> ListForAssetAsync(Guid assetId, Guid userId, CancellationToken cancellationToken = default) =>
         await db.RemasterJobs
             .Where(j => j.AssetId == assetId && j.UserId == userId)
-            .OrderByDescending(j => j.CreatedAt)
+            .OrderByDescending(j => j.CreatedAt.UtcDateTime)
             .ToListAsync(cancellationToken);
 
     public async Task AddAsync(RemasterJob job, CancellationToken cancellationToken = default)
@@ -34,7 +34,7 @@ public sealed class RemasterJobRepository(RemasterGuruDbContext db) : IRemasterJ
     public async Task<IReadOnlyList<RemasterJob>> GetQueuedBatchAsync(int take, CancellationToken cancellationToken = default) =>
         await db.RemasterJobs
             .Where(j => j.Status == RemasterJobStatus.Queued)
-            .OrderBy(j => j.CreatedAt)
+            .OrderBy(j => j.CreatedAt.UtcDateTime)
             .Take(take)
             .ToListAsync(cancellationToken);
 

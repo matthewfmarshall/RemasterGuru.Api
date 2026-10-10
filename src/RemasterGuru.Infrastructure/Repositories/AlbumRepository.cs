@@ -18,7 +18,7 @@ public sealed class AlbumRepository(RemasterGuruDbContext db) : IAlbumRepository
     public async Task<IReadOnlyList<Album>> ListForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
         await db.Albums
             .Where(a => a.UserId == userId && a.DeletedAt == null)
-            .OrderByDescending(a => a.UpdatedAt)
+            .OrderByDescending(a => a.UpdatedAt.UtcDateTime)
             .ToListAsync(cancellationToken);
 
     public Task<Album?> GetForUserAsync(Guid albumId, Guid userId, CancellationToken cancellationToken = default) =>

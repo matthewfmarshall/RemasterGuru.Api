@@ -37,14 +37,14 @@ public sealed class OrderRepository(RemasterGuruDbContext db) : IOrderRepository
         await db.Orders
             .Where(o => o.LabOrderId == null
                 && (o.Status == OrderStatus.Paid || o.Status == OrderStatus.AwaitingFulfillment))
-            .OrderBy(o => o.CreatedAt)
+            .OrderBy(o => o.CreatedAt.UtcDateTime)
             .Take(Math.Clamp(take, 1, 100))
             .ToListAsync(cancellationToken);
 
     public async Task<IReadOnlyList<Order>> ListForUserAsync(Guid userId, CancellationToken cancellationToken = default) =>
         await db.Orders
             .Where(o => o.UserId == userId)
-            .OrderByDescending(o => o.CreatedAt)
+            .OrderByDescending(o => o.CreatedAt.UtcDateTime)
             .ToListAsync(cancellationToken);
 
     public async Task AddAsync(Order order, CancellationToken cancellationToken = default)
