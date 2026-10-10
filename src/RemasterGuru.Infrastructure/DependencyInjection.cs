@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RemasterGuru.Infrastructure.Data;
@@ -22,7 +23,12 @@ public static class DependencyInjection
         {
             if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
             {
+                // Migrations are authored against SQL Server; at runtime SQLite maps the same
+                // schema but EF compares against a SQL Server snapshot and raises a false
+                // PendingModelChangesWarning. SQL Server deployments keep the strict check.
                 options.UseSqlite(connectionString);
+                options.ConfigureWarnings(w =>
+                    w.Ignore(RelationalEventId.PendingModelChangesWarning));
             }
             else
             {
@@ -47,7 +53,17 @@ public static class DependencyInjection
     public static async Task MigrateDatabaseAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {
         await using var scope = services.CreateAsyncScope();
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+        var provider = configuration["Database:Provider"]?.Trim() ?? "SqlServer";
         var db = scope.ServiceProvider.GetRequiredService<RemasterGuruDbContext>();
+
+        if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+        {
+            // HF staging: migrations are SQL Server–authored; build schema from the model instead.
+            await db.Database.EnsureCreatedAsync(cancellationToken);
+            return;
+        }
+
         await db.Database.MigrateAsync(cancellationToken);
     }
 }

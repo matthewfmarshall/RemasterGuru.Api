@@ -3,17 +3,29 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace RemasterGuru.Infrastructure.Data;
 
+/// <summary>
+/// Design-time factory so <c>dotnet ef</c> honors <c>Database__Provider</c> and
+/// <c>ConnectionStrings__Default</c> (e.g. SQLite for HF staging).
+/// </summary>
 public sealed class RemasterGuruDbContextFactory : IDesignTimeDbContextFactory<RemasterGuruDbContext>
 {
     public RemasterGuruDbContext CreateDbContext(string[] args)
     {
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__Default")
-            ?? "Server=localhost,1433;Database=RemasterGuru;User Id=sa;Password=RemasterGuru_Dev1!;TrustServerCertificate=True;Encrypt=False";
+            ?? "Data Source=remasterguru-design.db";
 
-        var options = new DbContextOptionsBuilder<RemasterGuruDbContext>()
-            .UseSqlServer(connectionString)
-            .Options;
+        var provider = Environment.GetEnvironmentVariable("Database__Provider")?.Trim() ?? "SqlServer";
 
-        return new RemasterGuruDbContext(options);
+        var optionsBuilder = new DbContextOptionsBuilder<RemasterGuruDbContext>();
+        if (provider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+        {
+            optionsBuilder.UseSqlite(connectionString);
+        }
+        else
+        {
+            optionsBuilder.UseSqlServer(connectionString);
+        }
+
+        return new RemasterGuruDbContext(optionsBuilder.Options);
     }
 }
