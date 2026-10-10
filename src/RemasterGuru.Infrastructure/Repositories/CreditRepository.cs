@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using RemasterGuru.Domain.Entities;
 using RemasterGuru.Domain.Enums;
@@ -83,8 +84,17 @@ public sealed class UserRepository(RemasterGuruDbContext db) : IUserRepository
             CreatedAt = DateTimeOffset.UtcNow
         };
         db.Users.Add(user);
-        await db.SaveChangesAsync(cancellationToken);
-        return user;
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return user;
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            db.Entry(user).State = EntityState.Detached;
+            return await GetByIdAsync(userId, cancellationToken)
+                ?? throw new InvalidOperationException("User row missing after unique constraint on create.");
+        }
     }
 
     public async Task<User> GetOrCreateByAuth0SubjectAsync(
@@ -104,9 +114,22 @@ public sealed class UserRepository(RemasterGuruDbContext db) : IUserRepository
             CreatedAt = DateTimeOffset.UtcNow
         };
         db.Users.Add(user);
-        await db.SaveChangesAsync(cancellationToken);
-        return user;
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+            return user;
+        }
+        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
+        {
+            db.Entry(user).State = EntityState.Detached;
+            return await GetByAuth0SubjectAsync(auth0Subject, cancellationToken)
+                ?? throw new InvalidOperationException("User row missing after unique constraint on Auth0Subject.");
+        }
     }
+
+    private static bool IsUniqueConstraintViolation(DbUpdateException ex) =>
+        ex.InnerException is SqliteException { SqliteErrorCode: 19 }
+        || ex.InnerException?.Message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) == true;
 
     public Task SaveChangesAsync(CancellationToken cancellationToken = default) =>
         db.SaveChangesAsync(cancellationToken);
