@@ -84,11 +84,17 @@ Click **Save Changes** at the bottom of Settings.
 
 > **HF Space URL:** After you create the Space on Hugging Face, the public URL is `https://<space-name>.hf.space`. Use that exact origin (no trailing slash) in all three fields and in `AUTH0_BASE_URL` / `APP_BASE_URL` when running on the Space.
 
-### C.3 — Authorize the Web app to call the API
+### C.3 — Authorize the Web app to call the API (required)
 
-1. Still on **Remaster Guru Web** → **APIs** tab (or **Applications → APIs** → **Remaster Guru API** → **Machine To Machine** / **Application** tabs depending on UI version).
-2. Ensure **Remaster Guru Web** is authorized to use **Remaster Guru API** (toggle on if shown).
-3. Under **User Access** / scopes, enable at least what you need for login (defaults are usually fine for v1).
+Creating the API in Part B is not enough. The Web SDK sends `audience` (`AUTH0_AUDIENCE`) on `/auth/login`; Auth0 rejects the authorize request unless this **Regular Web Application** is allowed to access that API.
+
+1. **Applications → APIs → Remaster Guru API** → **Application Access**.
+2. Enable **Remaster Guru Web** (type: Regular Web Application). **Save**.
+3. Alternate path: **Applications → Remaster Guru Web** → **APIs** tab → authorize **Remaster Guru API**.
+
+If this step is skipped, `/auth/callback` returns `error=invalid_request` and:
+
+`Client "<client_id>" is not authorized to access resource server "https://api.remasterguru.com".`
 
 For **Regular Web** apps, the access token for your API is requested via the SDK using `AUTH0_AUDIENCE` (see Web env below), not only M2M grants.
 
