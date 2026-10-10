@@ -94,15 +94,23 @@ dotnet tool install --global Swashbuckle.AspNetCore.Cli
 swagger tofile src/RemasterGuru.Api/bin/Debug/net10.0/RemasterGuru.Api.dll v1 -o openapi/v1.json
 ```
 
-## Dev authentication
+## Authentication
 
-Send a GUID on every `/api/v1/*` request:
+### Auth0 (staging / production)
+
+When `Auth0:Domain` and `Auth0:Audience` are set, the API requires a valid Auth0 **JWT** (`Authorization: Bearer …`) and maps users by `sub` into `Users.Auth0Subject`.
+
+**Setup from scratch (new free dev tenant, Dashboard API + Web app, localhost and Hugging Face callbacks):** [docs/auth0-setup.md](docs/auth0-setup.md)
+
+### Dev mode (no Auth0)
+
+Leave `Auth0:Domain` empty. Send a GUID on every `/api/v1/*` request:
 
 ```http
 X-User-Id: 00000000-0000-4000-8000-000000000001
 ```
 
-The API auto-creates a `User` row on first request. Replace with JWT/cookies before production.
+The API auto-creates a `User` row on first request.
 
 ## Data files (gitignored)
 
